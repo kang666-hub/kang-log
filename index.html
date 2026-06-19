@@ -108,6 +108,7 @@
   }
 
   let activeTab = 'eng';
+  let expandedId = null;
 
   function renderTabs() {
     const container = document.getElementById('tabs');
@@ -129,6 +130,7 @@
     container.querySelectorAll('.tab-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         activeTab = btn.dataset.tab;
+        expandedId = null;
         renderTabs();
         renderCards();
         renderModeLabel();
@@ -139,29 +141,61 @@
   function renderCards() {
     const container = document.getElementById('cards');
     const active = CATEGORIES[activeTab];
-    const filtered = POSTS.filter((p) => p.category === activeTab);
-    container.innerHTML = filtered.map((post) => `
-      <article class="relative p-5 transition-transform duration-200 hover:-translate-y-0.5 cursor-pointer group" style="background:${COLORS.panel}; border:1px solid ${COLORS.lineSoft};">
-        ${cornerMarks('rgba(231,238,242,0.15)')}
-        ${(post.images && post.images.length) ? `
-          <div style="margin:-20px -20px 12px -20px; height:140px; overflow:hidden; border-bottom:1px solid ${COLORS.lineSoft};">
-            <img src="${post.images[0]}" alt="" style="width:100%; height:100%; object-fit:cover; display:block;">
+    const filtered = POSTS.filter((p) => p.category === activeTab)
+      .sort((a, b) => new Date(b.date) - new Date(a.date)); // 新到舊
+
+    container.innerHTML = filtered.map((post) => {
+      const isExpanded = post.id === expandedId;
+      const images = post.images || [];
+
+      // 收合狀態：只顯示第一張當封面；展開狀態：底下會顯示完整圖庫，這裡不重複顯示封面
+      const coverHtml = (!isExpanded && images.length) ? `
+        <div style="margin:-20px -20px 12px -20px; height:140px; overflow:hidden; border-bottom:1px solid ${COLORS.lineSoft};">
+          <img src="${images[0]}" alt="" style="width:100%; height:100%; object-fit:cover; display:block;">
+        </div>
+      ` : '';
+
+      // content可能不存在(舊文章)或留空(發文時沒填正文)，都fallback用excerpt
+      const bodyText = isExpanded ? (post.content || post.excerpt) : post.excerpt;
+
+      const galleryHtml = (isExpanded && images.length) ? `
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+          ${images.map((src) => `<img src="${src}" alt="" style="width:100%; height:120px; object-fit:cover; border-radius:4px; display:block;">`).join('')}
+        </div>
+      ` : '';
+
+      return `
+        <article
+          class="post-card relative p-5 transition-transform duration-200 hover:-translate-y-0.5 cursor-pointer group"
+          data-id="${post.id}"
+          style="background:${COLORS.panel}; border:1px solid ${COLORS.lineSoft}; ${isExpanded ? 'grid-column: 1 / -1;' : ''}"
+        >
+          ${cornerMarks('rgba(231,238,242,0.15)')}
+          ${coverHtml}
+          <div class="flex items-center gap-2 mb-3 font-mono text-xs uppercase tracking-wider" style="color:${active.color};">
+            <span class="inline-block w-1.5 h-1.5 rounded-full" style="background:${active.color};"></span>
+            ${active.label}
           </div>
-        ` : ''}
-        <div class="flex items-center gap-2 mb-3 font-mono text-xs uppercase tracking-wider" style="color:${active.color};">
-          <span class="inline-block w-1.5 h-1.5 rounded-full" style="background:${active.color};"></span>
-          ${active.label}
-        </div>
-        <h3 class="font-display font-bold text-base mb-2 leading-snug">${post.title}</h3>
-        <p class="text-sm clamp-2 mb-4" style="color:${COLORS.textSecondary};">${post.excerpt}</p>
-        <div class="flex items-center justify-between font-mono text-xs" style="color:${COLORS.textMuted};">
-          <span>${post.date}</span>
-          <span class="inline-flex transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
-            ${icon('ArrowUpRight', { size: 14 })}
-          </span>
-        </div>
-      </article>
-    `).join('');
+          <h3 class="font-display font-bold text-base mb-2 leading-snug">${post.title}</h3>
+          ${galleryHtml}
+          <p class="text-sm ${isExpanded ? '' : 'clamp-2'} mb-4" style="color:${COLORS.textSecondary}; white-space:${isExpanded ? 'pre-wrap' : 'normal'};">${bodyText}</p>
+          <div class="flex items-center justify-between font-mono text-xs" style="color:${COLORS.textMuted};">
+            <span>${post.date}</span>
+            <span class="inline-flex transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" style="${isExpanded ? 'transform:rotate(180deg);' : ''}">
+              ${icon('ArrowUpRight', { size: 14 })}
+            </span>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    container.querySelectorAll('.post-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        const id = Number(card.dataset.id);
+        expandedId = expandedId === id ? null : id;
+        renderCards();
+      });
+    });
   }
 
   function renderModeLabel() {

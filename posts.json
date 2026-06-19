@@ -80,5 +80,17 @@
     "images": [
       "images/10_1.jpg"
     ]
+  },
+  {
+    "id": 11,
+    "category": "trade",
+    "title": "[測試]展開功能驗證",
+    "excerpt": "這是摘要,展開後應該看不到這段而是看正文",
+    "content": "第一行正文\n第二行正文，測試換行有沒有保留\n第三行",
+    "date": "2026-06-19",
+    "images": [
+      "images/11_1.jpg",
+      "images/11_2.jpg"
+    ]
   }
 ]
