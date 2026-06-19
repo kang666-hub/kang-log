@@ -94,17 +94,8 @@
     trade: { label: '交易心得', code: 'TRADE', color: '#F5B756', icon: 'LineChart' },
   };
 
-  const POSTS = [
-    { id: 1, cat: 'eng', title: '懸臂工法箱型梁施工：背靠背試驗紀錄整理', excerpt: '彙整 P1/P2 橋墩工作車背靠背載重試驗的審查文件與量測流程，記錄委員會審查重點與後續修正項目。', date: '2026-06-12' },
-    { id: 2, cat: 'eng', title: '工期展延計算修正：排除假日與國定假日', excerpt: '原始 Excel 公式漏算週末與公告假日，重建排除規則，確保展延天數核算結果可受審。', date: '2026-05-28' },
-    { id: 3, cat: 'eng', title: '監造系統擴充：材料送審與抽驗履歷結構化', excerpt: '把材料送審、試驗表單與抽驗履歷整合進工地檢查網頁系統，減少紙本表單的重複輸入。', date: '2026-05-09' },
-    { id: 4, cat: 'fpv', title: 'Meteor75 Pro 落水搶救全紀錄', excerpt: '從打撈、拆解、淡水沖洗到電子元件烘乾的完整流程，記錄哪些步驟救回了主板。', date: '2026-06-15' },
-    { id: 5, cat: 'fpv', title: '機架選型筆記：Bee25 與 Stellar25 怎麼選', excerpt: '比較兩款 2.5 吋機架的重量、剛性與可維修性，整理出符合自己飛行習慣的判斷依據。', date: '2026-05-30' },
-    { id: 6, cat: 'fpv', title: '練習日誌：finger spin 與 prop hang 的手感差異', excerpt: '記錄兩個技巧在油門曲線與手感上的差異，以及反覆練習後抓到的節奏。', date: '2026-05-02' },
-    { id: 7, cat: 'trade', title: 'chip_watchdog 加入 Market Gravity Filter', excerpt: '用櫃買指數與 20MA 的相對位置做大盤過濾，降低盤勢逆風時的假訊號干擾。', date: '2026-06-10' },
-    { id: 8, cat: 'trade', title: '天條四：半倉檢視紀律的程式化落實', excerpt: '把「該不該減碼」從感覺判斷，轉成有明確觸發條件的檢查清單。', date: '2026-05-20' },
-    { id: 9, cat: 'trade', title: '用 Anki 把交易心理刻進長期記憶', excerpt: '將「少輸為贏」的原則拆成情境式問答卡，每天間隔重複複習，降低重蹈覆轍的機率。', date: '2026-04-18' },
-  ];
+  // 貼文資料改成動態讀取 posts.json，不再寫死在HTML裡
+  let POSTS = [];
 
   function cornerMarks(color, size = 10) {
     const base = `position:absolute; width:${size}px; height:${size}px;`;
@@ -148,10 +139,15 @@
   function renderCards() {
     const container = document.getElementById('cards');
     const active = CATEGORIES[activeTab];
-    const filtered = POSTS.filter((p) => p.cat === activeTab);
+    const filtered = POSTS.filter((p) => p.category === activeTab);
     container.innerHTML = filtered.map((post) => `
       <article class="relative p-5 transition-transform duration-200 hover:-translate-y-0.5 cursor-pointer group" style="background:${COLORS.panel}; border:1px solid ${COLORS.lineSoft};">
         ${cornerMarks('rgba(231,238,242,0.15)')}
+        ${(post.images && post.images.length) ? `
+          <div style="margin:-20px -20px 12px -20px; height:140px; overflow:hidden; border-bottom:1px solid ${COLORS.lineSoft};">
+            <img src="${post.images[0]}" alt="" style="width:100%; height:100%; object-fit:cover; display:block;">
+          </div>
+        ` : ''}
         <div class="flex items-center gap-2 mb-3 font-mono text-xs uppercase tracking-wider" style="color:${active.color};">
           <span class="inline-block w-1.5 h-1.5 rounded-full" style="background:${active.color};"></span>
           ${active.label}
@@ -180,11 +176,25 @@
       new Date().toLocaleTimeString('zh-TW', { hour12: false });
   }
 
-  renderTabs();
-  renderCards();
-  renderModeLabel();
-  updateClock();
-  setInterval(updateClock, 1000);
+  async function init() {
+    renderTabs();
+    renderModeLabel();
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    try {
+      const res = await fetch('posts.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      POSTS = await res.json();
+    } catch (e) {
+      document.getElementById('cards').innerHTML =
+        `<p class="font-mono text-xs" style="color:#F5B756;">⚠️ 貼文資料載入失敗：${e.message}</p>`;
+      return;
+    }
+    renderCards();
+  }
+
+  init();
 </script>
 </body>
 </html>
