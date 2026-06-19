@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KANG.LOG</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+  html, body { margin: 0; overflow-x: hidden; }
+  .font-display { font-family: 'Space Grotesk', 'Noto Sans TC', sans-serif; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+  .font-body { font-family: 'Noto Sans TC', sans-serif; }
+  .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
+</head>
+<body class="font-body" style="background:#0A0F14; color:#E7EEF2; min-height:100vh; position:relative;">
+
+  <div style="position:fixed; inset:0; pointer-events:none; background-image: linear-gradient(rgba(77,168,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(77,168,255,0.05) 1px, transparent 1px); background-size: 48px 48px;"></div>
+
+  <div class="relative max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+
+    <!-- top bar — HUD readout -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-5 mb-6" style="border-bottom:1px solid rgba(231,238,242,0.10);">
+      <div class="font-display font-bold text-lg tracking-tight">
+        KANG<span style="color:#4DA8FF;">.LOG</span>
+      </div>
+      <div class="font-mono text-xs flex items-center gap-3 flex-wrap" style="color:#7E8B97;">
+        <span class="flex items-center gap-1.5">
+          <span class="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style="background:#5FE3A0;"></span>
+          ONLINE
+        </span>
+        <span style="color:#4D5862;">/</span>
+        <span id="clock"></span>
+        <span style="color:#4D5862;">/</span>
+        <span>STATION 32K+500</span>
+        <span style="color:#4D5862;">/</span>
+        <span id="modeLabel"></span>
+      </div>
+    </div>
+
+    <!-- hero -->
+    <div class="mb-10">
+      <div class="font-mono text-xs uppercase tracking-widest mb-3" style="color:#4DA8FF;">
+        FIELD NOTES — 工程／飛行／交易
+      </div>
+      <h1 class="font-display font-bold text-2xl sm:text-4xl leading-tight mb-3">
+        用工程的精度，記錄每一次嘗試。
+      </h1>
+      <p class="text-sm sm:text-base max-w-xl" style="color:#7E8B97;">
+        監造工程師、FPV 飛手、交易研究者 Kang 的現場筆記與紀律練習。
+      </p>
+    </div>
+
+    <!-- tabs -->
+    <div id="tabs" class="flex gap-2 sm:gap-3 mb-8 flex-wrap"></div>
+
+    <!-- card grid -->
+    <div id="cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+    <!-- footer -->
+    <div class="mt-12 pt-6 font-mono text-xs" style="border-top:1px solid rgba(231,238,242,0.10); color:#4D5862;">
+      © 2026 KANG.LOG — 監造工程師／FPV 飛手／交易研究者
+    </div>
+  </div>
+
+<script>
+  const COLORS = {
+    bg: '#0A0F14',
+    panel: '#111922',
+    line: 'rgba(231,238,242,0.10)',
+    lineSoft: 'rgba(231,238,242,0.06)',
+    textPrimary: '#E7EEF2',
+    textSecondary: '#7E8B97',
+    textMuted: '#4D5862',
+    brand: '#4DA8FF',
+  };
+
+  // lucide icon path data (Building2 / Radio / LineChart / ArrowUpRight), inlined — no npm dependency
+  const ICON_PATHS = {
+    Building2: '<path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/>',
+    Radio: '<path d="M16.247 7.761a6 6 0 0 1 0 8.478"/><path d="M19.075 4.933a10 10 0 0 1 0 14.134"/><path d="M4.925 19.067a10 10 0 0 1 0-14.134"/><path d="M7.753 16.239a6 6 0 0 1 0-8.478"/><circle cx="12" cy="12" r="2"/>',
+    LineChart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/>',
+    ArrowUpRight: '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
+  };
+
+  function icon(name, { size = 14, color = 'currentColor', className = '' } = {}) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${className}" style="flex-shrink:0;">${ICON_PATHS[name]}</svg>`;
+  }
+
+  const CATEGORIES = {
+    eng:   { label: '工程筆記', code: 'ENG',   color: '#4DA8FF', icon: 'Building2' },
+    fpv:   { label: 'FPV',      code: 'FPV',   color: '#5FE3A0', icon: 'Radio' },
+    trade: { label: '交易心得', code: 'TRADE', color: '#F5B756', icon: 'LineChart' },
+  };
+
+  const POSTS = [
+    { id: 1, cat: 'eng', title: '懸臂工法箱型梁施工：背靠背試驗紀錄整理', excerpt: '彙整 P1/P2 橋墩工作車背靠背載重試驗的審查文件與量測流程，記錄委員會審查重點與後續修正項目。', date: '2026-06-12' },
+    { id: 2, cat: 'eng', title: '工期展延計算修正：排除假日與國定假日', excerpt: '原始 Excel 公式漏算週末與公告假日，重建排除規則，確保展延天數核算結果可受審。', date: '2026-05-28' },
+    { id: 3, cat: 'eng', title: '監造系統擴充：材料送審與抽驗履歷結構化', excerpt: '把材料送審、試驗表單與抽驗履歷整合進工地檢查網頁系統，減少紙本表單的重複輸入。', date: '2026-05-09' },
+    { id: 4, cat: 'fpv', title: 'Meteor75 Pro 落水搶救全紀錄', excerpt: '從打撈、拆解、淡水沖洗到電子元件烘乾的完整流程，記錄哪些步驟救回了主板。', date: '2026-06-15' },
+    { id: 5, cat: 'fpv', title: '機架選型筆記：Bee25 與 Stellar25 怎麼選', excerpt: '比較兩款 2.5 吋機架的重量、剛性與可維修性，整理出符合自己飛行習慣的判斷依據。', date: '2026-05-30' },
+    { id: 6, cat: 'fpv', title: '練習日誌：finger spin 與 prop hang 的手感差異', excerpt: '記錄兩個技巧在油門曲線與手感上的差異，以及反覆練習後抓到的節奏。', date: '2026-05-02' },
+    { id: 7, cat: 'trade', title: 'chip_watchdog 加入 Market Gravity Filter', excerpt: '用櫃買指數與 20MA 的相對位置做大盤過濾，降低盤勢逆風時的假訊號干擾。', date: '2026-06-10' },
+    { id: 8, cat: 'trade', title: '天條四：半倉檢視紀律的程式化落實', excerpt: '把「該不該減碼」從感覺判斷，轉成有明確觸發條件的檢查清單。', date: '2026-05-20' },
+    { id: 9, cat: 'trade', title: '用 Anki 把交易心理刻進長期記憶', excerpt: '將「少輸為贏」的原則拆成情境式問答卡，每天間隔重複複習，降低重蹈覆轍的機率。', date: '2026-04-18' },
+  ];
+
+  function cornerMarks(color, size = 10) {
+    const base = `position:absolute; width:${size}px; height:${size}px;`;
+    return `
+      <span style="${base} top:-1px; left:-1px; border-top:1px solid ${color}; border-left:1px solid ${color};"></span>
+      <span style="${base} top:-1px; right:-1px; border-top:1px solid ${color}; border-right:1px solid ${color};"></span>
+      <span style="${base} bottom:-1px; left:-1px; border-bottom:1px solid ${color}; border-left:1px solid ${color};"></span>
+      <span style="${base} bottom:-1px; right:-1px; border-bottom:1px solid ${color}; border-right:1px solid ${color};"></span>
+    `;
+  }
+
+  let activeTab = 'eng';
+
+  function renderTabs() {
+    const container = document.getElementById('tabs');
+    container.innerHTML = Object.entries(CATEGORIES).map(([key, cat]) => {
+      const isActive = key === activeTab;
+      return `
+        <button
+          data-tab="${key}"
+          class="tab-btn relative flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors duration-200"
+          style="background:${isActive ? COLORS.panel : 'transparent'}; color:${isActive ? COLORS.textPrimary : COLORS.textSecondary}; border:1px solid ${isActive ? 'transparent' : COLORS.lineSoft};"
+        >
+          ${isActive ? cornerMarks(cat.color) : ''}
+          ${icon(cat.icon, { size: 14, color: isActive ? cat.color : COLORS.textMuted })}
+          ${cat.label}
+        </button>
+      `;
+    }).join('');
+
+    container.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        activeTab = btn.dataset.tab;
+        renderTabs();
+        renderCards();
+        renderModeLabel();
+      });
+    });
+  }
+
+  function renderCards() {
+    const container = document.getElementById('cards');
+    const active = CATEGORIES[activeTab];
+    const filtered = POSTS.filter((p) => p.cat === activeTab);
+    container.innerHTML = filtered.map((post) => `
+      <article class="relative p-5 transition-transform duration-200 hover:-translate-y-0.5 cursor-pointer group" style="background:${COLORS.panel}; border:1px solid ${COLORS.lineSoft};">
+        ${cornerMarks('rgba(231,238,242,0.15)')}
+        <div class="flex items-center gap-2 mb-3 font-mono text-xs uppercase tracking-wider" style="color:${active.color};">
+          <span class="inline-block w-1.5 h-1.5 rounded-full" style="background:${active.color};"></span>
+          ${active.label}
+        </div>
+        <h3 class="font-display font-bold text-base mb-2 leading-snug">${post.title}</h3>
+        <p class="text-sm clamp-2 mb-4" style="color:${COLORS.textSecondary};">${post.excerpt}</p>
+        <div class="flex items-center justify-between font-mono text-xs" style="color:${COLORS.textMuted};">
+          <span>${post.date}</span>
+          <span class="inline-flex transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+            ${icon('ArrowUpRight', { size: 14 })}
+          </span>
+        </div>
+      </article>
+    `).join('');
+  }
+
+  function renderModeLabel() {
+    const active = CATEGORIES[activeTab];
+    const el = document.getElementById('modeLabel');
+    el.textContent = `MODE ${active.code}`;
+    el.style.color = active.color;
+  }
+
+  function updateClock() {
+    document.getElementById('clock').textContent =
+      new Date().toLocaleTimeString('zh-TW', { hour12: false });
+  }
+
+  renderTabs();
+  renderCards();
+  renderModeLabel();
+  updateClock();
+  setInterval(updateClock, 1000);
+</script>
+</body>
+</html>
