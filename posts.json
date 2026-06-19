@@ -70,35 +70,5 @@
     "excerpt": "將「少輸為贏」的原則拆成情境式問答卡，每天間隔重複複習，降低重蹈覆轍的機率。",
     "date": "2026-04-18",
     "images": []
-  },
-  {
-    "id": 10,
-    "category": "eng",
-    "title": "[測試]端對端發文驗證",
-    "excerpt": "這是Claude自動測試用的貼文,確認後會清除",
-    "date": "2026-06-19",
-    "images": [
-      "images/10_1.jpg"
-    ]
-  },
-  {
-    "id": 11,
-    "category": "trade",
-    "title": "[測試]併發B",
-    "excerpt": "測試併發鎖B",
-    "date": "2026-06-19",
-    "images": [
-      "images/11_1.jpg"
-    ]
-  },
-  {
-    "id": 12,
-    "category": "fpv",
-    "title": "[測試]併發A",
-    "excerpt": "測試併發鎖A",
-    "date": "2026-06-19",
-    "images": [
-      "images/12_1.jpg"
-    ]
   }
 ]
