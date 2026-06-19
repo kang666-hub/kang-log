@@ -64,6 +64,12 @@
     </div>
   </div>
 
+  <!-- 全螢幕閱讀浮層：點卡片展開文章用，不做獨立網址/路由 -->
+  <div id="postModal" style="display:none; position:fixed; inset:0; background:rgba(5,8,11,0.92); z-index:1000; overflow-y:auto;">
+    <button id="modalCloseBtn" aria-label="關閉" style="position:fixed; top:16px; right:16px; z-index:1001; width:36px; height:36px; border-radius:50%; background:#111922; border:1px solid rgba(231,238,242,0.2); color:#E7EEF2; font-size:16px; cursor:pointer;">✕</button>
+    <div id="modalContent" class="max-w-2xl mx-auto px-4 sm:px-6" style="padding-top:64px; padding-bottom:60px;"></div>
+  </div>
+
 <script>
   const COLORS = {
     bg: '#0A0F14',
@@ -145,22 +151,10 @@
       .sort((a, b) => new Date(b.date) - new Date(a.date)); // 新到舊
 
     container.innerHTML = filtered.map((post) => {
-      const isExpanded = post.id === expandedId;
       const images = post.images || [];
-
-      // 收合狀態：只顯示第一張當封面；展開狀態：底下會顯示完整圖庫，這裡不重複顯示封面
-      const coverHtml = (!isExpanded && images.length) ? `
+      const coverHtml = images.length ? `
         <div style="margin:-20px -20px 12px -20px; height:140px; overflow:hidden; border-bottom:1px solid ${COLORS.lineSoft};">
           <img src="${images[0]}" alt="" style="width:100%; height:100%; object-fit:cover; display:block;">
-        </div>
-      ` : '';
-
-      // content可能不存在(舊文章)或留空(發文時沒填正文)，都fallback用excerpt
-      const bodyText = isExpanded ? (post.content || post.excerpt) : post.excerpt;
-
-      const galleryHtml = (isExpanded && images.length) ? `
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-          ${images.map((src) => `<img src="${src}" alt="" style="width:100%; height:120px; object-fit:cover; border-radius:4px; display:block;">`).join('')}
         </div>
       ` : '';
 
@@ -168,7 +162,7 @@
         <article
           class="post-card relative p-5 transition-transform duration-200 hover:-translate-y-0.5 cursor-pointer group"
           data-id="${post.id}"
-          style="background:${COLORS.panel}; border:1px solid ${COLORS.lineSoft}; ${isExpanded ? 'grid-column: 1 / -1;' : ''}"
+          style="background:${COLORS.panel}; border:1px solid ${COLORS.lineSoft};"
         >
           ${cornerMarks('rgba(231,238,242,0.15)')}
           ${coverHtml}
@@ -177,11 +171,10 @@
             ${active.label}
           </div>
           <h3 class="font-display font-bold text-base mb-2 leading-snug">${post.title}</h3>
-          ${galleryHtml}
-          <p class="text-sm ${isExpanded ? '' : 'clamp-2'} mb-4" style="color:${COLORS.textSecondary}; white-space:${isExpanded ? 'pre-wrap' : 'normal'};">${bodyText}</p>
+          <p class="text-sm clamp-2 mb-4" style="color:${COLORS.textSecondary};">${post.excerpt}</p>
           <div class="flex items-center justify-between font-mono text-xs" style="color:${COLORS.textMuted};">
             <span>${post.date}</span>
-            <span class="inline-flex transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" style="${isExpanded ? 'transform:rotate(180deg);' : ''}">
+            <span class="inline-flex transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
               ${icon('ArrowUpRight', { size: 14 })}
             </span>
           </div>
@@ -192,11 +185,48 @@
     container.querySelectorAll('.post-card').forEach((card) => {
       card.addEventListener('click', () => {
         const id = Number(card.dataset.id);
-        expandedId = expandedId === id ? null : id;
-        renderCards();
+        if (expandedId === id) {
+          closeModal();
+        } else {
+          const post = filtered.find((p) => p.id === id);
+          if (post) openModal(post);
+        }
       });
     });
   }
+
+  // ── 全螢幕閱讀浮層：不做獨立網址/路由，純前端state切換 ──────────
+  const modalEl = document.getElementById('postModal');
+  const modalContentEl = document.getElementById('modalContent');
+  const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+  function openModal(post) {
+    expandedId = post.id;
+    const images = post.images || [];
+    const bodyText = post.content || post.excerpt; // 沒填正文(或舊文章沒有content欄位)就fallback顯示摘要
+
+    modalContentEl.innerHTML = `
+      <h2 class="font-display font-bold text-2xl sm:text-3xl leading-snug mb-2">${post.title}</h2>
+      <div class="font-mono text-xs mb-6" style="color:${COLORS.textMuted};">${post.date}</div>
+      ${images.map((src) => `
+        <img src="${src}" alt="" style="width:100%; max-height:80vh; object-fit:contain; display:block; margin-bottom:16px; background:#000;">
+      `).join('')}
+      <p class="text-sm sm:text-base" style="color:${COLORS.textSecondary}; white-space:pre-wrap; line-height:1.8;">${bodyText}</p>
+    `;
+    modalEl.style.display = 'block';
+    document.body.style.overflow = 'hidden'; // 鎖住背景捲動，關閉後背景列表捲動位置才不會跑掉
+  }
+
+  function closeModal() {
+    expandedId = null;
+    modalEl.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  modalCloseBtn.addEventListener('click', closeModal);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modalEl.style.display === 'block') closeModal();
+  });
 
   function renderModeLabel() {
     const active = CATEGORIES[activeTab];
